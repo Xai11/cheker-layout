@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Проверка сайта</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+            text-align: center;
+        }
+        input[type="text"] {
+            width: 300px;
+            padding: 10px;
+            margin: 10px 0;
+        }
+        input[type="submit"] {
+            padding: 10px 20px;
+        }
+        .result {
+            font-size: 48px;
+            margin: 20px 0;
+        }
+        .checklist {
+            list-style-type: none;
+            padding: 0;
+        }
+        .checklist li {
+            font-size: 24px;
+            margin: 10px 0;
+        }
+        .checklist .success {
+            color: green;
+        }
+        .checklist .fail {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Введите ссылку на сайт</h1>
+    <form id="urlForm">
+        <input type="text" id="urlInput" placeholder="https://www.example.com" required>
+        <input type="submit" value="Отправить">
+    </form>
+
+    <script>
+        document.getElementById('urlForm').addEventListener('submit', async function(event) {
+            event.preventDefault();
+            const url = document.getElementById('urlInput').value;
+
+            if (url.startsWith('http://') || url.startsWith('https://')) {
+                try {
+                    const response = await fetch('/getURL', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ url: url })
+                    });
+
+                    if (response.ok) {
+                        const result = await response.json();
+                        alert('URL успешно отправлен: ' + result.message);
+                        window.open("/templates/result.html", "_blank"); // Открытие на новой вкладке
+                    } else {
+                        alert('Ошибка при отправке URL');
+                    }
+                } catch (error) {
+                    alert('Произошла ошибка: ' + error.message);
+                }
+            } else {
+                alert('Пожалуйста, введите корректный URL, начинающийся с http:// или https://');
+            }
+        });
+    </script>
+
+</body>
+</html>
