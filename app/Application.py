@@ -1,34 +1,58 @@
 from selenium import webdriver
 from axe_selenium_python import Axe
-from webdriver_manager.chrome import ChromeDriverManager
-from selenium.webdriver.chrome.service import Service
 
-def check_accessibility(url):
-    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
-    driver.get(url)
+# Инициализация веб-драйвера
+driver = webdriver.Chrome()
 
-    axe = Axe(driver)
-    axe.inject()
-    results = axe.run()
+# Открытие веб-сайта
+driver.get('https://doka.guide/a11y/?view=themes')
 
-    # Запись результатов в файл
-    axe.write_results(results, 'axe_report.json')
+# Инициализация Axe
+axe = Axe(driver)
 
-    # Вывод информации о нарушениях в консоль
+# Запуск тестов доступности
+axe.inject()
+results = axe.run()
+
+# Закрытие драйвера
+driver.quit()
+
+
+# Функция для расчета балла
+def calculate_accessibility_score(results):
     violations = results['violations']
-    if violations:
-        print(f"Найдено {len(violations)} нарушений:")
-        for violation in violations:
-            print(f"\nПроблема: {violation['description']}")
-            print(f"Влияние: {violation['impact']}")
-            print("Элементы:")
-            for node in violation['nodes']:
-                print(f"  - {node['html']}")
-            print(f"Рекомендации: {violation['helpUrl']}")
-    else:
-        print("Нарушения не найдены.")
 
-    driver.quit()
+    # Начальный балл
+    score = 100
 
-check_accessibility('https://nuoflix.de')
+    # Приоритеты для различных уровней серьезности
+    priority_scores = {
+        'critical': 5,
+        'serious': 3,
+        'moderate': 2,
+        'minor': 1
+    }
 
+    for violation in violations:
+        impact = violation['impact']
+        nodes_count = len(violation['nodes'])
+
+        # Получаем приоритетный балл
+        priority_score = priority_scores.get(impact, 1)
+
+        # Вычисляем штраф за текущую ошибку
+        penalty = priority_score * (nodes_count * 0.1)
+
+        # Вычитаем штраф из общего балла
+        score -= penalty
+
+    # Ограничение балла от 0 до 100
+    final_score = max(min(score, 100), 0)
+    return final_score
+
+
+# Расчет итогового балла
+final_score = calculate_accessibility_score(results)
+
+# Вывод результата
+print(f"Итоговый балл доступности: {final_score:.2f}/100")
