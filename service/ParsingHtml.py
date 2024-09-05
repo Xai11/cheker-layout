@@ -1,21 +1,11 @@
 from selenium import webdriver
+from selenium.webdriver.common.by import By
+from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.chrome.service import Service
 
-# Указать путь к драйверу (например, chromedriver для Chrome)
-driver_path = 'alex/PycharmProjects/ml-for-blinds/geckodriver/'
-
-# Создать экземпляр драйвера
-driver = webdriver.Chrome(driver_path)
-
-# Открыть нужный сайт
-driver.get('https://example.com')
-
-# Получить ширину окна
-window_width = driver.execute_script("return window.innerWidth;")
-print(f'Ширина окна: {window_width}')
-
-# Получить ширину документа
-document_width = driver.execute_script("return document.body.scrollWidth;")
-print(f'Ширина документа: {document_width}')
-
-# Закрыть драйвер
-driver.quit()
+def pars_web_page(url):
+    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
+    driver.get(url)
+    html = driver.page_source
+    elements = driver.find_elements(By.CLASS_NAME, "articles-group__link link link--non-cached")
+    print(elements)

@@ -1,9 +1,6 @@
-from repository.ParsHTML import parsing_page
+from service.ParsingHtml import pars_web_page
 
+url = "https://doka.guide/a11y/"
 
-def check_parsing():
-    url = "https://minsocium.ru/"
-    parsing_page(url)
+pars_web_page(url)
 
-if __name__ == '__main__':
-    check_parsing()
