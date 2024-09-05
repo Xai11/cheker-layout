@@ -1,7 +1,15 @@
+from http.client import responses
+from xml.dom import SyntaxErr
+
 import requests
+import  pandas as pd
+from bs4 import BeautifulSoup
 
-URL_TEMPLATE = "https://www.gosuslugi.ru/"
-request = requests.get(URL_TEMPLATE)
-print(request.status_code)
 
-print(request.text)
+def parsing_page(url):
+    request = requests.get(URL_TEMPLATE)
+    print(request.status_code)
+    soup = BeautifulSoup(request.content, 'html.parser')
+    print(soup)
+
+URL_TEMPLATE = "https://minsocium.ru/"
