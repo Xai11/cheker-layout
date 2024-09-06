@@ -1,28 +1,56 @@
-import io
-from time import sleep, time
-
-
-import numpy as np
-from PIL import Image
 from selenium import webdriver
-from selenium.webdriver import Keys
-from selenium.webdriver.common.by import By
-from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.common.exceptions import TimeoutException
+from selenium.webdriver.common.keys import Keys
+from axe_selenium_python import Axe
+from time import sleep
+from PIL import Image
+import io
+import numpy as np
 
 def pars_web_page(url):
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
     driver.get(url)
+
+    axe = Axe(driver)
+
+    # Запуск тестов доступности
+    axe.inject()
+    results = axe.run()
+
     sleep(5)
+
     html = driver.page_source
 
     check_scalability(driver)
     sleep(10)
-    check_scripts_keyboard(driver)
 
     check_contrast(driver)
 
     check_description_image(driver)
+
+    popup = find_popup_selector(driver)
+
+    accessible = is_popup_keyboard_accessible(driver, popup)
+    if accessible:
+        print("Всплывающее окно доступно для управления с клавиатуры.")
+    elif popup is not None:
+        print("Всплывающее окно недоступно для управления с клавиатуры.")
+
+    driver.quit()
+
+    # Расчет итогового балла
+    final_score = calculate_accessibility_score(results)
+
+    # Вывод результата
+    print(f"Итоговый балл доступности: {final_score:.2f}/100")
+
+    # Вывод ошибок по важным критериям
+    print_important_violations(results)
 
 def check_size_page(driver):
     window_width = driver.execute_script("return window.innerWidth;")
@@ -38,13 +66,6 @@ def check_size_page(driver):
     else:
         print("На сайте нет горизонтального прокручивания.")
 
-def check_scripts_keyboard(driver):
-    # Поиск всех кнопок по тегу <button>
-    buttons = driver.find_elements(By.XPATH, '//button[@type="button"]')
-
-    for button in buttons:
-        print('Found button:', button.get_attribute('outerHTML'))
-
 def check_contrast(driver):
     screenshot = driver.get_screenshot_as_png()
 
@@ -58,7 +79,6 @@ def check_contrast(driver):
     image_array = np.array(gray_image)
 
     # Вычислите контрастность
-    # Контрастность можно определить как стандартное отклонение интенсивности пикселей
     contrast = image_array.std()
 
     print(f'Контрастность изображения: {contrast}')
@@ -68,14 +88,9 @@ def check_scalability(driver):
         "return document.querySelector('meta[name=\"viewport\"]').getAttribute('content')"
     )
 
-    if meta_viewport:
-        print(f'Мета-тег viewport найден: {meta_viewport}')
-    else:
-        print('Мета-тег viewport не найден.')
-
     # Эмуляция различных размеров экранов
     sizes = [(320, 480), (768, 1024), (1024, 768), (1920, 1080)]
-    count_size = 0;
+    count_size = 0
     for width, height in sizes:
         driver.set_window_size(width, height)
         window_width = driver.execute_script("return window.innerWidth;")
@@ -83,23 +98,129 @@ def check_scalability(driver):
 
         # Проверка наличия горизонтальной прокрутки
         if document_width > window_width:
-            count_size+=1
+            count_size += 1
     if count_size > 0:
         print("При изменении масштаба появилась горизонтальная прокрутка")
     else:
         print("Сайт масштабируется правильно")
-    print(f'Установлен размер окна: {width}x{height}')
-    # Здесь вы можете добавить дополнительные проверки, например, скриншоты или анализ элементов
 
 def check_description_image(driver):
     try:
         image = driver.find_element(By.TAG_NAME, 'img')
         alt_text = image.get_attribute('alt')
-        print(alt_text)
 
         if alt_text:
             print(f'Описание изображения: {alt_text}')
         else:
             print('Атрибут alt не найден.')
-    finally:
-        print("No image!")
+    except Exception as e:
+        print("Ошибка при проверке описания изображения:", e)
+
+def find_popup_selector(driver):
+    potential_selectors = [
+        "[role='dialog']",
+        ".modal",
+        ".popup",
+        "#cookie-banner",
+        "#cookieWarning",
+        "#cookieHolder",
+        ".cookie-banner",
+        ".cookie-popup",
+        ".cookie-consent",
+        "[aria-label='cookie consent']",
+        "[id*='cookie']",
+        "[class*='cookie']"
+    ]
+
+    for selector in potential_selectors:
+        elements = driver.find_elements(By.CSS_SELECTOR, selector)
+        for element in elements:
+            if element.is_displayed():
+                return element
+    return None
+
+def calculate_accessibility_score(results):
+    violations = results['violations']
+
+    # Начальный балл
+    score = 100
+
+    # Приоритеты для различных уровней серьезности
+    priority_scores = {
+        'critical': 5,
+        'serious': 3,
+        'moderate': 2,
+        'minor': 1
+    }
+
+    # Критерии, которые несут только одну ошибку
+    single_error_criteria = {
+        'document-title',
+        'heading-order'
+    }
+
+    print("\nДетали штрафов за ошибки:")
+    for violation in violations:
+        impact = violation['impact']
+        nodes_count = len(violation['nodes'])
+
+        # Получаем приоритетный балл
+        priority_score = priority_scores.get(impact, 1)
+
+        # Проверяем, является ли критерий таким, который несет только одну ошибку
+        if violation['id'] in single_error_criteria:
+            penalty = priority_score * 10
+            print(f"Критерий: {violation['id']} | Приоритет: {priority_score} | Штраф: {priority_score} * 10 = {penalty}")
+        else:
+            penalty = priority_score * nodes_count
+            print(f"Критерий: {violation['id']} | Приоритет: {priority_score} | Кол-во ошибок: {nodes_count} | Штраф: {priority_score} * {nodes_count} = {penalty}")
+
+        # Вычитаем штраф из общего балла
+        score -= penalty
+
+    # Ограничение балла от 0 до 100
+    final_score = max(min(score, 100), 0)
+    return final_score
+
+def is_popup_keyboard_accessible(driver, popup):
+    if popup is None:
+        print("Всплывающее окно не найдено.")
+        return False
+
+    focusable_elements = popup.find_elements(By.CSS_SELECTOR, 'a, button, input, select, textarea, [tabindex]')
+
+    try:
+        initial_focus = WebDriverWait(driver, 10).until(
+            EC.visibility_of(focusable_elements[0])
+        )
+        initial_focus.send_keys(Keys.TAB)
+
+        for element in focusable_elements:
+            WebDriverWait(driver, 10).until(
+                EC.visibility_of(element)
+            )
+            element.send_keys(Keys.TAB)
+            if not element == driver.switch_to.active_element:
+                return False
+        return True
+    except TimeoutException:
+        print("Элемент не доступен для взаимодействия.")
+        return False
+
+def print_important_violations(results):
+    important_criteria = [
+        'keyboard',  # Использование клавиатуры
+        'image-alt',  # Альтернативный текст для изображений
+        'color-contrast',  # Контрастность текста
+        'document-title',  # Заголовки страниц
+        'label',  # Формы и их описание
+        'aria-roles',  # Использование ARIA
+        'heading-order'  # Структура заголовков
+    ]
+
+    print("\nОшибки по важным критериям:")
+    for violation in results['violations']:
+        if violation['id'] in important_criteria:
+            print(f"\nКритерий: {violation['id']}")
+            print(f"Описание: {violation['description']}")
+            print(f"Количество элементов с ошибками: {len(violation['nodes'])}")
