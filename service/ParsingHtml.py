@@ -92,11 +92,14 @@ def check_scalability(driver):
     # Здесь вы можете добавить дополнительные проверки, например, скриншоты или анализ элементов
 
 def check_description_image(driver):
-    image = driver.find_elements(By.TAG_NAME, 'img')
-    alt_text = image.get_attribute('alt')
-    print(alt_text)
+    try:
+        image = driver.find_element(By.TAG_NAME, 'img')
+        alt_text = image.get_attribute('alt')
+        print(alt_text)
 
-    if alt_text:
-        print(f'Описание изображения: {alt_text}')
-    else:
-        print('Атрибут alt не найден.')
+        if alt_text:
+            print(f'Описание изображения: {alt_text}')
+        else:
+            print('Атрибут alt не найден.')
+    finally:
+        print("No image!")
