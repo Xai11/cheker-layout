@@ -11,6 +11,7 @@ from time import sleep
 from PIL import Image
 import io
 import numpy as np
+import json
 
 def pars_web_page(url):
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
@@ -147,10 +148,10 @@ def calculate_accessibility_score(results):
 
     # Приоритеты для различных уровней серьезности
     priority_scores = {
-        'critical': 5,
-        'serious': 3,
-        'moderate': 2,
-        'minor': 1
+        'critical': 0.5,
+        'serious': 0.3,
+        'moderate': 0.2,
+        'minor': 0.1
     }
 
     # Критерии, которые несут только одну ошибку
@@ -180,6 +181,7 @@ def calculate_accessibility_score(results):
 
     # Ограничение балла от 0 до 100
     final_score = max(min(score, 100), 0)
+    save_results_to_json(final_score, results['violations'])
     return final_score
 
 def is_popup_keyboard_accessible(driver, popup):
@@ -224,3 +226,25 @@ def print_important_violations(results):
             print(f"\nКритерий: {violation['id']}")
             print(f"Описание: {violation['description']}")
             print(f"Количество элементов с ошибками: {len(violation['nodes'])}")
+
+def save_results_to_json(final_score, violations):
+    data = {
+        "final_score": final_score,
+        "criteria": []
+    }
+
+    for violation in violations:
+        data["criteria"].append({
+            "id": violation['id'],
+            "description": violation['description'],
+            "impact": violation['impact'],
+            "errors_count": len(violation['nodes'])
+        })
+
+    with open('/Users/User/OneDrive/Документы/hakaton/ml-for-blinds/templates/accessibility_results.json', 'w', encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False, indent=4)
+
+# Пример использования функции
+# Предположим, что у вас уже есть `final_score` и `results` из `axe.run()`
+
+

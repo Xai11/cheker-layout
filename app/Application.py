@@ -8,10 +8,9 @@ from selenium.common.exceptions import TimeoutException
 
 from service.ParsingHtml import pars_web_page
 
-url = "https://www.livejournal.com"
+url = "https://doka.guide/a11y/?view=themes"
 
 pars_web_page(url)
-
 
 
 

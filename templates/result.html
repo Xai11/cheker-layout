@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Результат проверки</title>
+    <title>Результат проверки доступности</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -19,7 +19,7 @@
             padding: 0;
         }
         .checklist li {
-            font-size: 24px;
+            font-size: 18px;
             margin: 10px 0;
         }
         .checklist .success {
@@ -32,16 +32,59 @@
 </head>
 <body>
 
-    <div class="result">85 баллов</div>
+    <div class="result">Загрузка...</div>
     <ul class="checklist">
-        <li class="success">Пункт 1 &#10004;</li>
-        <li class="fail">Пункт 2 &#10008;</li>
-        <li class="success">Пункт 3 &#10004;</li>
-        <li class="success">Пункт 4 &#10004;</li>
-        <li class="fail">Пункт 5 &#10008;</li>
-        <li class="success">Пункт 6 &#10004;</li>
-        <li class="fail">Пункт 7 &#10008;</li>
+        <!-- Данные будут добавлены здесь -->
     </ul>
+
+    <script>
+        const criteriaDescriptions = {
+            'aria-allowed-role': 'Роль ARIA должна иметь допустимое значение',
+            'button-name': 'Кнопки имеют различимый текст',
+            'color-contrast': 'Контраст между цветами фона и текста',
+            'duplicate-id': 'Каждое значение атрибута id должно быть уникальным',
+            'frame-title': 'Описание frame объектов',
+            'image-redundant-alt': 'Текст кнопок и ссылок не повторяется',
+            'label': 'Каждый элемент формы имеет метку',
+            'landmark-no-duplicate-contentinfo': 'На странице должно быть не более одного элемента contentinfo',
+            'landmark-one-main': 'На странице должен быть только один основной элемент',
+            'link-name': 'Ссылки содержат текст описания',
+            'page-has-heading-one': 'Страница должна содержать заголовок первого уровня',
+            'region': 'Весь контент страницы должен быть в landmarks'
+        };
+
+        // Загрузка JSON данных
+        fetch('accessibility_results.json')
+            .then(response => response.json())
+            .then(jsonData => {
+                const data = jsonData || { final_score: 0, criteria: [] };
+
+                document.querySelector('.result').textContent = `${data.final_score} баллов`;
+
+                const checklist = document.querySelector('.checklist');
+                checklist.innerHTML = ''; // Очистка списка
+
+                // Обновление данных на основе загруженного JSON
+                Object.keys(criteriaDescriptions).forEach(criteriaId => {
+                    const item = data.criteria.find(c => c.id === criteriaId) || { errors_count: 0 };
+                    const li = document.createElement('li');
+                    const description = criteriaDescriptions[criteriaId] || 'Неизвестный критерий';
+                    li.textContent = `${description} — ${item.errors_count} ошибок`;
+                    if (item.errors_count > 0) {
+                        li.className = 'fail';
+                        li.textContent += ' ❌';
+                    } else {
+                        li.className = 'success';
+                        li.textContent += ' ✔️';
+                    }
+                    checklist.appendChild(li);
+                });
+            })
+            .catch(error => {
+                console.error('Ошибка загрузки JSON:', error);
+                document.querySelector('.result').textContent = 'Ошибка загрузки данных';
+            });
+    </script>
 
 </body>
 </html>
