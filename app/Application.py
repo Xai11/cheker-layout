@@ -8,7 +8,9 @@ from selenium.common.exceptions import TimeoutException
 
 from service.ParsingHtml import pars_web_page
 
-url = "https://doka.guide/a11y/?view=themes"
+from service.ParsingHtml import pars_web_page
+
+url = "https://www.selenium.dev/documentation/webdriver/elements/finders/"
 
 pars_web_page(url)
 
